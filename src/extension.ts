@@ -1,25 +1,26 @@
 import * as vscode from 'vscode'
+import { ecmascriptHandler } from './languages/ecmascrypt'
+
+const languageMapping: Record<string, string> = {
+	javascript: 'ecmascript',
+	typescript: 'ecmascript',
+	javascriptreact: 'ecmascript',
+	typescriptreact: 'ecmascript'
+}
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('Hello from Yai')
 	const disposable = vscode.commands.registerCommand('yai.helloWorld', async () => {
-
 		if (vscode.window.activeTextEditor) {
-			const module = await vscode.window.showInputBox({
-				title: 'Input the name of the Module'
-			})
-			const items = await vscode.window.showInputBox({ title: 'Input the importing things' })
-			const insertStr = `import ${items} from '${module}'\n`
-
 			const { document } = vscode.window.activeTextEditor
-			const edit = new vscode.WorkspaceEdit()
-			edit.insert(document.uri, new vscode.Position(0, 0), insertStr)
-			const ok = await vscode.workspace.applyEdit(edit)
-			if (ok) {
-				vscode.window.showInformationMessage('Insert successfully!')
-				vscode.commands.executeCommand('editor.action.formatDocument')
-			} else {
-				vscode.window.showErrorMessage('Fail to insert sentences')
+			const ws = vscode.workspace.getWorkspaceFolder(document.uri)
+			if (!ws) {
+				return
+			}
+			if (!languageMapping[document.languageId]) {
+				vscode.window.showInformationMessage(`Sorry, YAI does not support ${document.languageId} yet.`)
+			} else if (languageMapping[document.languageId] === 'ecmascript') {
+				// ecmascript-like 语言处理器
+				ecmascriptHandler(context, ws, document)
 			}
 		} else {
 			vscode.window.showInformationMessage('No Active editor!')

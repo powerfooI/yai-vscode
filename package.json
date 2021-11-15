@@ -10,26 +10,14 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:yai.helloWorld",
-    "onCustomEditor:yai.catScratch"
+    "onCommand:yai.helloWorld"
   ],
   "main": "./out/extension.js",
   "contributes": {
-    "customEditors": [
-      {
-        "viewType": "yai.catScratch",
-        "displayName": "Cat Scratch",
-        "selector": [
-          {
-            "filenamePattern": "*.cscratch"
-          }
-        ]
-      }
-    ],
     "commands": [
       {
         "command": "yai.helloWorld",
-        "title": "Hello World"
+        "title": "yai"
       }
     ]
   },
