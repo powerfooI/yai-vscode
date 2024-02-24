@@ -1,18 +1,24 @@
 import * as vscode from 'vscode'
+import * as fs from 'fs';
+import * as path from 'path';
+import { Dependency } from './dependency';
 
 const MODULE_KEY = 'YAI_NODE_MODULE_KEY'
 
-/** 类似 ecmascript 语言的处理 */
+/** Handle ecmascript-like languages */
 export async function ecmascriptHandler(context: vscode.ExtensionContext, ws: vscode.WorkspaceFolder, document: vscode.TextDocument) {
-  let modules = context.workspaceState.get(MODULE_KEY)
+  let modules: string[] | undefined = context.workspaceState.get(MODULE_KEY)
   console.log('cached modules', modules)
-  const nodeModulesURI = ws.uri.with({ path: ws.uri.path + '/node_modules' })
-  if (!modules) {
-    const readModules = (await vscode.workspace.fs.readDirectory(nodeModulesURI)).filter((m) => !/^[\_\@\.]/.test(m[0]) && m[1] === 2).map((m) => m[0])
+
+  if (!modules || modules.length === 0) {
+    const readModules = getDepsInPackageJson(ws.uri.path, path.join(ws.uri.path, 'package.json')).map(dep => dep.label)
     context.workspaceState.update(MODULE_KEY, readModules)
     modules = readModules
   }
-
+  if (modules.length === 0) {
+    vscode.window.showErrorMessage('No module found in package.json')
+    return
+  }
   const module = await vscode.window.showQuickPick(modules as string[], {
     placeHolder: 'Pick the base module, please.',
     title: 'Module'
@@ -21,12 +27,16 @@ export async function ecmascriptHandler(context: vscode.ExtensionContext, ws: vs
     return
   }
 
+  const edit = new vscode.WorkspaceEdit()
+  let insertStr = ''
   const items = await vscode.window.showInputBox({ title: 'Input the name to import it' })
   if (!items) {
-    return
+    insertStr = `import * as ${module} from '${module}'\n`
+  } else {
+    insertStr = `import ${items} from '${module}'\n`
   }
-  const edit = new vscode.WorkspaceEdit()
-  const insertStr = `import ${items} from '${module}'\n`
+  // TODO: handle duplicated package import
+
   // const moduleImportSection = `from '${module}'`
 
   // if (document.getText().includes(moduleImportSection)) {
@@ -52,4 +62,84 @@ export async function ecmascriptHandler(context: vscode.ExtensionContext, ws: vs
   } else {
     vscode.window.showErrorMessage('Fail to insert importing sentence')
   }
+}
+
+/**
+ * Given the path to package.json, read all its dependencies and devDependencies.
+ */
+function getDepsInPackageJson(wsRoot: string, packageJsonPath: string): Dependency[] {
+  if (pathExists(packageJsonPath)) {
+    console.log('packageJsonPath exists', packageJsonPath)
+    const toDep = (moduleName: string, version: string): Dependency => {
+      if (pathExists(path.join(wsRoot, 'node_modules', moduleName))) {
+        return new Dependency(
+          moduleName,
+          version,
+          vscode.TreeItemCollapsibleState.Collapsed
+        );
+      } else {
+        return new Dependency(moduleName, version, vscode.TreeItemCollapsibleState.None);
+      }
+    };
+
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+
+    const deps = packageJson.dependencies
+      ? Object.keys(packageJson.dependencies).map(dep =>
+        toDep(dep, packageJson.dependencies[dep])
+      )
+      : [];
+    const devDeps = packageJson.devDependencies
+      ? Object.keys(packageJson.devDependencies).map(dep =>
+        toDep(dep, packageJson.devDependencies[dep])
+      )
+      : [];
+    return deps.concat(devDeps);
+  } else {
+    return [];
+  }
+}
+
+// Judge whether a path exists
+function pathExists(p: string): boolean {
+  try {
+    fs.accessSync(p);
+  } catch (err) {
+    return false;
+  }
+  return true;
+}
+
+
+export class NodeDependenciesProvider implements vscode.TreeDataProvider<Dependency> {
+  constructor(private workspaceRoot: string) { }
+
+  getTreeItem(element: Dependency): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(element?: Dependency): Thenable<Dependency[]> {
+    if (!this.workspaceRoot) {
+      vscode.window.showInformationMessage('No dependency in empty workspace');
+      return Promise.resolve([]);
+    }
+
+    if (element) {
+      return Promise.resolve(
+        getDepsInPackageJson(
+          this.workspaceRoot,
+          path.join(this.workspaceRoot, 'node_modules', element.label, 'package.json')
+        )
+      );
+    } else {
+      const packageJsonPath = path.join(this.workspaceRoot, 'package.json');
+      if (pathExists(packageJsonPath)) {
+        return Promise.resolve(getDepsInPackageJson(this.workspaceRoot, packageJsonPath));
+      } else {
+        vscode.window.showInformationMessage('Workspace has no package.json');
+        return Promise.resolve([]);
+      }
+    }
+  }
+
 }

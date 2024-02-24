@@ -10,16 +10,25 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:yai.helloWorld"
+    "onCommand:yai.import",
+    "onView:yaiDependencies"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "yai.helloWorld",
+        "command": "yai.import",
         "title": "yai"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "yaiDependencies",
+          "name": "Yai Dependencies"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

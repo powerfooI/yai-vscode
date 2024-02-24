@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { ecmascriptHandler } from './languages/ecmascrypt'
+import { ecmascriptHandler, NodeDependenciesProvider } from './languages/ecmascrypt'
 
 const languageMapping: Record<string, string> = {
 	javascript: 'ecmascript',
@@ -9,7 +9,15 @@ const languageMapping: Record<string, string> = {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-	const disposable = vscode.commands.registerCommand('yai.helloWorld', async () => {
+	// Register dependency view
+  const rootPath =
+    vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
+      ? vscode.workspace.workspaceFolders[0].uri.fsPath
+      : undefined;
+  const nodeDependenciesProvider = new NodeDependenciesProvider(rootPath!);
+  vscode.window.registerTreeDataProvider('yaiDependencies', nodeDependenciesProvider);
+
+	const disposable = vscode.commands.registerCommand('yai.import', async () => {
 		if (vscode.window.activeTextEditor) {
 			const { document } = vscode.window.activeTextEditor
 			const ws = vscode.workspace.getWorkspaceFolder(document.uri)
@@ -19,11 +27,10 @@ export function activate(context: vscode.ExtensionContext) {
 			if (!languageMapping[document.languageId]) {
 				vscode.window.showInformationMessage(`Sorry, YAI does not support ${document.languageId} yet.`)
 			} else if (languageMapping[document.languageId] === 'ecmascript') {
-				// ecmascript-like 语言处理器
 				ecmascriptHandler(context, ws, document)
 			}
 		} else {
-			vscode.window.showInformationMessage('No Active editor!')
+			vscode.window.showInformationMessage('No active editor!')
 		}
 	})
 
