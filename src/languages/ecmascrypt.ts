@@ -28,37 +28,54 @@ export async function ecmascriptHandler(context: vscode.ExtensionContext, ws: vs
   }
 
   const edit = new vscode.WorkspaceEdit()
-  let insertStr = ''
-  const items = await vscode.window.showInputBox({ title: 'Input the name to import it' })
-  if (!items) {
-    insertStr = `import * as ${module} from '${module}'\n`
+  const items = await vscode.window.showInputBox({ title: 'Input the name to import it, all by default' })
+
+  const moduleImportSection = `from '${module}'`
+  if (document.getText().includes(moduleImportSection) && items) {
+  	const lines = document.getText().split('\n').map((l) => l.trim())
+  	for (let i = 0; i < lines.length; ++i) {
+  		if (lines[i].includes(moduleImportSection)) {
+        const splittedItems = items.split(',').map((i) => i.trim())
+        if (!lines[i].includes('import *')) {
+          const lineStart = new vscode.Position(i, 0)
+          const lineEnd = lineStart.translate(1, 0)
+          const pattern = /import \{(.*)\} from/
+          const match = lines[i].match(pattern)
+          console.log(match, lines[i])
+          if (match && match.length > 1) {
+            // Existing statement is like `import { a, b, c } from 'module'`
+            const importedItems = match[1].split(',').map((i) => i.trim())
+            for (const item of splittedItems) {
+              if (!importedItems.includes(item)) {
+                importedItems.push(item)
+              }
+            }
+            const instStatement = `import { ${importedItems.join(', ')} } from '${module}'\n`
+            edit.replace(document.uri, new vscode.Range(lineStart, lineEnd), instStatement)
+          } else {
+            // Existing statement is NOT like `import { a, b, c } from 'module'`.
+            // Then what should it be?
+            const instModules: string[] = []
+            for (const item of splittedItems) {
+              if (!lines[i].includes(item)) {
+                instModules.push(item)
+              }
+            }
+            const instStatement = `import { ${instModules.join(', ')} } from '${module}'\n`
+            edit.replace(document.uri, new vscode.Range(lineStart, lineEnd), instStatement)
+          }
+        }
+  			break
+  		}
+  	}
   } else {
-    insertStr = `import ${items} from '${module}'\n`
+  	edit.insert(document.uri, new vscode.Position(0, 0), `import * as ${module} from '${module}'\n`)
   }
-  // TODO: handle duplicated package import
-
-  // const moduleImportSection = `from '${module}'`
-
-  // if (document.getText().includes(moduleImportSection)) {
-  // 	const lines = document.getText().split('\n').map((l) => l.trim())
-  // 	for (let i = 0; i < lines.length; ++i) {
-  // 		if (lines[i].includes(moduleImportSection)) {
-  // 			const lineStart = new vscode.Position(i, 0)
-  // 			const lineEnd = lineStart.translate(1, 0)
-  // 			edit.replace(document.uri, new vscode.Range(lineStart, lineEnd), insertStr)
-  // 			break
-  // 		}
-  // 	}
-  // } else {
-  // 	edit.insert(document.uri, new vscode.Position(0, 0), insertStr)
-  // }
-
-  edit.insert(document.uri, new vscode.Position(0, 0), insertStr)
 
   const ok = await vscode.workspace.applyEdit(edit)
   if (ok) {
     vscode.window.showInformationMessage('Insert successfully!')
-    vscode.commands.executeCommand('editor.action.formatDocument')
+    // vscode.commands.executeCommand('editor.action.formatDocument')
   } else {
     vscode.window.showErrorMessage('Fail to insert importing sentence')
   }
