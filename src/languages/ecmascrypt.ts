@@ -2,6 +2,7 @@ import * as vscode from 'vscode'
 import * as fs from 'fs';
 import * as path from 'path';
 import { Dependency } from './dependency';
+import { pathExists } from './utils';
 
 const MODULE_KEY = 'YAI_NODE_MODULE_KEY'
 
@@ -117,15 +118,6 @@ function getDepsInPackageJson(wsRoot: string, packageJsonPath: string): Dependen
   }
 }
 
-// Judge whether a path exists
-function pathExists(p: string): boolean {
-  try {
-    fs.accessSync(p);
-  } catch (err) {
-    return false;
-  }
-  return true;
-}
 
 
 export class NodeDependenciesProvider implements vscode.TreeDataProvider<Dependency> {

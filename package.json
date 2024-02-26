@@ -10,8 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:yai.import",
-    "onView:yaiDependencies"
+    "onCommand:yai.import"
   ],
   "main": "./out/extension.js",
   "contributes": {
