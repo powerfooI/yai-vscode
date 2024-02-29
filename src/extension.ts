@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { ecmascriptHandler, NodeDependenciesProvider } from './languages/ecmascrypt'
-import { golangHandler } from './languages/golang';
+import { golangHandler, indexGoModule } from './languages/golang';
 
 const languageMapping: Record<string, string> = {
 	javascript: 'ecmascript',
@@ -11,7 +11,15 @@ const languageMapping: Record<string, string> = {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-	const disposable = vscode.commands.registerCommand('yai.import', async () => {
+	const indexRegister = vscode.commands.registerCommand('yai.index', async () => {
+		if (vscode.window.activeTextEditor) {
+			const goModFile = await vscode.workspace.findFiles('**/go.mod')
+			if (goModFile.length > 0) {
+				indexGoModule(context, vscode.workspace.workspaceFolders![0])
+			}
+		}
+	})
+	const importRegister = vscode.commands.registerCommand('yai.import', async () => {
 		if (vscode.window.activeTextEditor) {
 			const { document } = vscode.window.activeTextEditor
 			const ws = vscode.workspace.getWorkspaceFolder(document.uri)
@@ -30,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	})
 
-	context.subscriptions.push(disposable)
+	context.subscriptions.push(importRegister, indexRegister)
 }
 
 // this method is called when your extension is deactivated

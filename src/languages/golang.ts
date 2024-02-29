@@ -6,6 +6,85 @@ import { pathExists } from './utils';
 
 const GO_MODULE_KEY = "YAI_GO_MODULE_KEY"
 
+const singleImportPattern = /import (.*"\S+")/g
+const multiImportPattern = /import \([\s\S]+?\)/g
+const packagePattern = /package (\S+)/g
+
+export async function indexGoModule(context: vscode.ExtensionContext, ws: vscode.WorkspaceFolder) {
+  const goModPath = path.join(ws.uri.path, 'go.mod')
+  if (!pathExists(goModPath)) {
+    vscode.window.showErrorMessage('No go.mod found in the workspace')
+    return
+  }
+  // Deps indexing
+  const deps = getDepsFromGoMod(goModPath)
+  context.workspaceState.update(GO_MODULE_KEY, deps.map(dep => dep.label))
+
+  // Local indexing
+  const goFiles = await vscode.workspace.findFiles('**/*.go')
+  if (goFiles.length === 0) {
+    vscode.window.showInformationMessage('No go file found in the workspace')
+    return
+  }
+  vscode.window.withProgress({
+    location: vscode.ProgressLocation.Notification,
+    title: 'Indexing go module',
+    cancellable: true,
+  }, async (progress) => {
+    progress.report({ increment: 0, message: 'Indexing go module' })
+    for (let i = 0; i < goFiles.length; i++) {
+      const file = goFiles[i]
+      const content = fs.readFileSync(file.fsPath, 'utf-8').replace(/\/\/.+/g, '//')
+
+      const singleImportMatch = content.match(singleImportPattern)
+      const multiImportMatch = content.match(multiImportPattern)
+
+      if (singleImportMatch) {
+        singleImportMatch.forEach((match) => {
+          const words = match.replace(/import /g, '').split(' ')
+          if (words.length > 1) {
+            const mod = words[1].replace(/"/g, '')
+            if (!deps.find(dep => dep.label === mod)) {
+              deps.push(new Dependency(mod, '', vscode.TreeItemCollapsibleState.None))
+            }
+          } else {
+            const mod = words[0].replace(/"/g, '')
+            if (!deps.find(dep => dep.label === mod)) {
+              deps.push(new Dependency(mod, '', vscode.TreeItemCollapsibleState.None))
+            }
+          }
+        })
+      } else if (multiImportMatch) {
+        multiImportMatch.forEach((match) => {
+          match.split('\n').slice(1, -1).forEach((line) => {
+            const words = line.trim().split(' ')
+            if (words.length > 1) {
+              /**
+               * abc "abc"
+               */
+              const mod = words[1].replace(/"/g, '')
+              if (!deps.find(dep => dep.label === mod)) {
+                deps.push(new Dependency(mod, '', vscode.TreeItemCollapsibleState.None))
+              }
+            } else {
+              /**
+               * "abc"
+               */
+              const mod = words[0].replace(/"/g, '')
+              if (!deps.find(dep => dep.label === mod)) {
+                deps.push(new Dependency(mod, '', vscode.TreeItemCollapsibleState.None))
+              }
+            }
+          })
+        })
+      }
+      progress.report({ increment: (i + 1) / goFiles.length * 100, message: 'Indexing go module' })
+    }
+    context.workspaceState.update(GO_MODULE_KEY, deps.map(dep => dep.label))
+  })
+  vscode.window.showInformationMessage('Go module indexed')
+}
+
 export async function golangHandler(context: vscode.ExtensionContext, ws: vscode.WorkspaceFolder, document: vscode.TextDocument) {
   let modules: string[] | undefined = context.workspaceState.get(GO_MODULE_KEY)
 
@@ -29,10 +108,6 @@ export async function golangHandler(context: vscode.ExtensionContext, ws: vscode
 
   const edit = new vscode.WorkspaceEdit()
   const alias = await vscode.window.showInputBox({ title: 'Input the alias of the importing package, original name by default' })
-
-  const singleImportPattern = /import (.*"\S+")/g
-  const multiImportPattern = /import \([\s\S]+?\)/g
-  const packagePattern = /package (\S+)/g
 
   const docText = document.getText().replace(/\/\/.+/g, '//')
   const lines = docText.split('\n').map((l) => l.trim())

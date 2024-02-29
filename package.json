@@ -17,7 +17,11 @@
     "commands": [
       {
         "command": "yai.import",
-        "title": "yai"
+        "title": "YAI: Import Module"
+      },
+      {
+        "command": "yai.index",
+        "title": "YAI: Index Modules"
       }
     ],
     "views": {
