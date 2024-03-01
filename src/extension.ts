@@ -39,6 +39,8 @@ export function activate(context: vscode.ExtensionContext) {
 	})
 
 	context.subscriptions.push(importRegister, indexRegister)
+
+	vscode.commands.executeCommand("yai.index")
 }
 
 // this method is called when your extension is deactivated
