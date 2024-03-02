@@ -1,4 +1,4 @@
-[
+export const goStdLibs = [
   "archive/tar",
   "archive/zip",
   "bufio",

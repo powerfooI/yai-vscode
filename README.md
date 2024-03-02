@@ -1,5 +1,23 @@
 # yai README
 
+Workflow for golang processing:
+
+1. Indexing
+  1. Index all files in the workspace
+  2. Index all deps in the go.mod
+2. Import
+  1. Select a package to import (from the index and std lib)
+    1. Open a quick select for users to select a package, and a special option to input custom one
+    2. If the package is not in the index, run `go get` or `go mod tidy` and then execute a local index for it 
+    3. If the package is in the index, import it and update the index score
+  2. Select a sub package to import
+    1. If the sub package name is empty, import the package itself
+    2. If the sub package name is the special one, open a quick input for users to input the sub package name
+    3. If the sub package name is selected one, import it and update the index score
+3. Select an alias
+  1. If the inputted alias is empty, import the package without an alias
+  2. If the inputted alias is not empty, import the package with the alias
+
 This is the README for your extension "yai". After writing up a brief description, we recommend including the following sections.
 
 ## Features
