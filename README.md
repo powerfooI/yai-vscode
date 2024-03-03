@@ -1,88 +1,21 @@
 # YAI - Yet Another Importer
 
-Workflow for golang processing:
-
-1. Indexing
-  1. Index all imports inside go files in the workspace
-  2. Index all deps in the go.mod
-2. Import
-  1. Select a package to import (from the index and std lib)
-    1. Open a quick select for users to select a package, and a special option to input custom one
-    2. If the package is not in the index, run `go get` or `go mod tidy` and then execute a local index for it 
-    3. If the package is in the index, import it and update the index score
-  2. Select a sub package to import
-    1. If the sub package name is empty, import the package itself
-    2. If the sub package name is the special one, open a quick input for users to input the sub package name
-    3. If the sub package name is selected one, import it and update the index score
-3. Select an alias
-  1. If the inputted alias is empty, import the package without an alias
-  2. If the inputted alias is not empty, import the package with the alias
-
-This is the README for your extension "yai". After writing up a brief description, we recommend including the following sections.
+Have you ever got tired of writing the same import statements over and over again? Scroll to the header of the file, add the import, scroll back to the place you were working on, and then repeat the process for every import you need? Well, I have. And that's why I created this extension.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+This extension allows you to add imports to your file without having to scroll to the top of the file and disrupting your flow. Just type the name of the module you want to import, and the extension will take care of the rest.
 
-For example if there is an image subfolder under your extension project workspace:
+## How to use
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Install the extension and activate it.
+2. Open a workspace in supported languages.
+3. Type CMD+Shift+P to open the command palette, and execute the command "YAI: Import module".
+4. Type the name of the module you want to import and press enter, the following steps depend on the language you are using. In Golang, for example, the extension will ask you sub package and alias to use.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Supported languages
 
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: enable/disable this extension
-* `myExtension.thing`: set to `blah` to do something
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
------------------------------------------------------------------------------------------------------------
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+CMD+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux) or `Cmd+Space` (macOS) to see a list of Markdown snippets
-
-### For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- [x] Golang
+- [ ] ECMAScript (WIP)
+- [ ] Python
+- [ ] C/C++

@@ -2,6 +2,10 @@
   "name": "yai",
   "displayName": "yai",
   "description": "Yet Another Importer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/powerfooi/yai-vscode"
+  },
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.56.0"
@@ -10,11 +14,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onLanguage:go",
-    "onLanguage:javascript",
-    "onLanguage:typescript",
-    "onLanguage:javascriptreact",
-    "onLanguage:typescriptreact"
+    "onLanguage:go"
   ],
   "main": "./out/extension.js",
   "contributes": {
