@@ -1,4 +1,4 @@
-import { LocalModuleImport, ModuleDependency } from './types';
+import { ModuleDependency } from './types';
 
 /** 
  * Given the content of go.mod, parse all its dependencies, including direct and indirect.
@@ -29,7 +29,8 @@ export type GoFileImport = {
 /**
  * Parse the content of a go file, and return all its imports.
  */
-export function parseGoFile(content: string): GoFileImport[] {
+export function parseGoFile(raw: string): GoFileImport[] {
+  const content = raw.replace(/\/\/.+/g, '').replace(/\/\*[\s\S]+?\*\//g, '')
   const singleImportPattern = /import (.*"\S+")/g
   const multiImportPattern = /import \([\s\S]+?\)/g
 
@@ -51,8 +52,13 @@ export function parseGoFile(content: string): GoFileImport[] {
     })
   } else if (multiImportMatch) {
     multiImportMatch.forEach((match) => {
-      match.split('\n').slice(1, -1).forEach((line) => {
-        const words = line.trim().split(' ')
+      const lines = match.split('\n')
+        .map((l) => l.trim())
+        .filter((l) => {
+          return l !== '' && l !== '//' && !l.startsWith('import') && !l.startsWith(')')
+        })
+      lines.forEach((line) => {
+        const words = line.split(' ')
         if (words.length > 1) {
           /**
            * abc "abc"
@@ -90,10 +96,11 @@ export type ImportPos = {
  * Judge the position of the import statement in a go file.
  * @throws an error if no package statement found in the file.
  */
-export function findImportPos(content: string, module: string): ImportPos {
+export function findImportPos(raw: string, module: string): ImportPos {
   const packagePattern = /package (\S+)/g
   const singleImportPattern = /import (.*"\S+")/g
   const multiImportPattern = /import \([\s\S]+?\)/g
+  const content = raw.replace(/\/\/.+/g, '//')
 
   const packageMatch = content.match(packagePattern)
   if (!packageMatch) {
@@ -107,7 +114,7 @@ export function findImportPos(content: string, module: string): ImportPos {
   let importStartLineNo = 0   // line no of import (
   let importEndLineNo = 0     // line no of ), pairing with importStartLineNo
 
-  const lines = content.replace(/\/\/.*/g, '//').split('\n').map((l) => l.trim())
+  const lines = content.split('\n').map((l) => l.trim())
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].match(packagePattern)) {
       packageLineNo = i
@@ -119,7 +126,7 @@ export function findImportPos(content: string, module: string): ImportPos {
     if (lines[i].includes("import (")) {
       importStartLineNo = i
     }
-    if (lines[i].includes(")")) {
+    if (lines[i].match(/^\)$/)) {
       importEndLineNo = i
       break
     }

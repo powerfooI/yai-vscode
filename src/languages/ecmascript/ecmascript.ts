@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 import * as fs from 'fs';
 import * as path from 'path';
-import { Dependency } from '../dependency';
+import { Dependency } from './dependency';
 import { pathExists } from '../utils';
 
 const MODULE_KEY = 'YAI_NODE_MODULE_KEY'

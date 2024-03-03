@@ -28,14 +28,7 @@
         "title": "YAI: Index Modules"
       }
     ],
-    "views": {
-      "explorer": [
-        {
-          "id": "yaiDependencies",
-          "name": "Yai Dependencies"
-        }
-      ]
-    }
+    "views": {}
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

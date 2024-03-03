@@ -1,9 +1,9 @@
-# yai README
+# YAI - Yet Another Importer
 
 Workflow for golang processing:
 
 1. Indexing
-  1. Index all files in the workspace
+  1. Index all imports inside go files in the workspace
   2. Index all deps in the go.mod
 2. Import
   1. Select a package to import (from the index and std lib)

@@ -130,6 +130,54 @@ func main() {
 }
 `
 
+const goFileContentMoreComplex = `/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package main
+
+import (
+	"context"
+	"flag"
+	"os"
+
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	// to ensure that exec-entrypoint and run can make use of them.
+
+	"go.uber.org/zap/zapcore"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	v1alpha1 "github.com/oceanbase/ob-operator/api/v1alpha1"
+	"github.com/oceanbase/ob-operator/internal/controller"
+	"github.com/oceanbase/ob-operator/internal/controller/config"
+	"github.com/oceanbase/ob-operator/internal/telemetry"
+	//+kubebuilder:scaffold:imports
+)
+
+var (
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
+)`
+
 describe('Golang Test Suite', () => {
   it('Test parsing a simple go.mod', () => {
     const parsed = parseGoMod(goModContentSimple)
@@ -179,6 +227,23 @@ describe('Golang Test Suite', () => {
 		assert.strictEqual(parsed[2].alias, '')
 	})
 
+	it('Test parsing a more complex go file', () => {
+		const parsed = parseGoFile(goFileContentMoreComplex)
+		assert.strictEqual(parsed.length, 15)
+		assert.strictEqual(parsed[0].name, 'context')
+		assert.strictEqual(parsed[0].alias, '')
+		assert.strictEqual(parsed[1].name, 'flag')
+		assert.strictEqual(parsed[1].alias, '')
+		assert.strictEqual(parsed[2].name, 'os')
+		assert.strictEqual(parsed[2].alias, '')
+		assert.strictEqual(parsed[3].name, 'go.uber.org/zap/zapcore')
+		assert.strictEqual(parsed[3].alias, '')
+
+		assert.strictEqual(parsed[11].name, 'github.com/oceanbase/ob-operator/api/v1alpha1')
+		assert.strictEqual(parsed[11].alias, 'v1alpha1')
+		
+	})
+
 	it('Test finding import position in go file with no import statement', () => {
 		const pos = findImportPos(goFileContentNoImport, "testing")
 		assert.strictEqual(pos.type, ImportPosType.NoImport)
@@ -201,5 +266,16 @@ describe('Golang Test Suite', () => {
 		assert.strictEqual(pos.type, ImportPosType.MultiImport)
 		assert.strictEqual(pos.start, 2)
 		assert.strictEqual(pos.end, 6)
+	})
+
+	it('Test more complex importing position', () => {
+		const pos = findImportPos(goFileContentMoreComplex, "testing")
+		assert.strictEqual(pos.type, ImportPosType.MultiImport)
+		assert.strictEqual(pos.start, 18)
+	})
+
+	it('Test more complex importing position with already imported module', () => {
+		const pos = findImportPos(goFileContentMoreComplex, "sigs.k8s.io/controller-runtime/pkg/log/zap")
+		assert.strictEqual(pos.type, ImportPosType.AlreadyImported)
 	})
 })

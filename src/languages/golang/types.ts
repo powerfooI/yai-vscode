@@ -42,6 +42,9 @@ export class LocalModuleImport {
   }
 
   public addAlias(alias: string, file: vscode.Uri) {
+    if (this.name === '//') {
+      console.log('alias', alias, file.path)
+    }
     const found = this.aliases.find(a => a.alias === alias)
     if (found) {
       found.files.push(file)
