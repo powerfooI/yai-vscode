@@ -17,5 +17,5 @@ This extension allows you to add imports to your file without having to scroll t
 
 - [x] Golang
 - [ ] ECMAScript (WIP)
-- [ ] Python
-- [ ] C/C++
+- [ ] Python (In planning)
+- [ ] C/C++ (In planning)
