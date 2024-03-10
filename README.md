@@ -1,6 +1,6 @@
 # YAI - Yet Another Importer
 
-Have you ever got tired of writing the same import statements over and over again? Scroll to the header of the file, add the import, scroll back to the place you were working on, and then repeat the process for every import you need? Well, I have. And that's why I created this extension.
+Have you ever got tired of writing the same import statements over and over again? Scroll to the header of the file, add the import, scroll back to the place you were working on, and then repeat the process for every import you need? Well, I have. The official language extensions do not always import the module as expected correctly. And that's why I created this extension.
 
 ## Features
 

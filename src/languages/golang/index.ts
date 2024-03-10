@@ -1,10 +1,10 @@
-import * as vscode from 'vscode'
 import * as fs from 'fs';
 import * as path from 'path';
-import { LocalModuleImport, LocalModuleImportType, ModuleDependency } from './types';
+import * as vscode from 'vscode';
 import { pathExists } from '../utils';
-import { parseGoFile, parseGoMod, findImportPos, ImportPosType } from './parse'
+import { ImportPosType, findImportPos, parseGoFileImports, parseGoModInfo } from './parse';
 import { goStdLibs } from './std';
+import { GoModInfo, IndexLocalGoFiles, LocalModuleImport, LocalModuleImportType, LocalSubPackage, ModuleDependency } from './types';
 
 const GO_MODULE_KEY = "YAI_GO_MODULE_KEY"
 
@@ -18,18 +18,31 @@ const customInputItem: vscode.QuickPickItem = {
 export class GolangProcessor {
   private localImports: Map<string, LocalModuleImport> = new Map()
   private importableDeps: ModuleDependency[] = []
+  private subPackages: LocalSubPackage[] = []
+  private goVersion: string = ''
+  private goModule: string = ''
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.localImports = this.context.workspaceState.get(GO_MODULE_KEY, new Map<string, LocalModuleImport>())
+    this.getExtensionConfig()
+  }
+  private getExtensionConfig() {
+    console.log("get extension config", vscode.workspace.getConfiguration().get<string[]>("yai.indexExclude"))
   }
 
-  private async indexLocal(): Promise<LocalModuleImport[]> {
+  private async indexAllGoFiles(): Promise<IndexLocalGoFiles | undefined> {
     const deps: LocalModuleImport[] = []
     const depMapping: Map<string, LocalModuleImport> = new Map()
-
-    const goFiles = await vscode.workspace.findFiles('**/*.go')
+    const packageSet: Set<string> = new Set()
+    const ws = vscode.workspace.workspaceFolders![0]
+    let excluding = ""
+    const excludePatterns = vscode.workspace.getConfiguration().get<string[]>("yai.indexExclude") || []
+    if (excludePatterns.length > 0) {
+      excluding = `{${excludePatterns.join(',')}}`
+    }
+    const goFiles = await vscode.workspace.findFiles('**/*.go', excluding)
     if (goFiles.length === 0) {
-      return []
+      return
     }
     vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
@@ -40,7 +53,23 @@ export class GolangProcessor {
       for (let i = 0; i < goFiles.length; i++) {
         const file = goFiles[i]
         const content = fs.readFileSync(file.fsPath, 'utf-8').replace(/\/\/.+/g, '//')
-        const imports = parseGoFile(content)
+
+        // Find the package name of the go file
+        const packageMatch = content.match(/package (\S+)/)
+        if (packageMatch && packageMatch.length > 1 && packageMatch[1] !== 'main' && !packageMatch[1].endsWith('_test')) {
+          const packageName = packageMatch[1]
+          const dirName = path.dirname(file.fsPath)
+          let packageFullName: string
+          if (dirName.endsWith(packageName)) {
+            packageFullName = path.dirname(file.fsPath).replace(ws.uri.fsPath, this.goModule)
+            packageSet.add(packageFullName)
+          }
+          // else: The package name is not the same as the directory name?
+          // What should we do?
+        }
+
+        // Parse the go file and find all its imports
+        const imports = parseGoFileImports(content)
         imports.forEach((imp) => {
           let local = depMapping.get(imp.name)
           if (!local) {
@@ -53,32 +82,43 @@ export class GolangProcessor {
         progress.report({ increment: (i + 1) / goFiles.length * 100, message: 'Indexing go module' })
       }
     })
-    return deps
+    return { localImports: deps, localSubPackages: Array.from(packageSet.keys())}
   }
 
-  private indexDeps() {
+  private indexGoMod(): GoModInfo | undefined {
     const ws = vscode.workspace.workspaceFolders![0]
     const goModPath = path.join(ws.uri.path, 'go.mod')
     if (!pathExists(goModPath)) {
       vscode.window.showErrorMessage('No go.mod found in the workspace')
-      return []
+      return
     }
     const content = fs.readFileSync(goModPath, 'utf-8')
-    const deps = parseGoMod(content)
-    return deps
+    const modInfo = parseGoModInfo(content)
+    return modInfo
   }
 
   public async index() {
-    const deps = this.indexDeps()
-    const locals = await this.indexLocal()
-    locals.forEach((local) => {
+    const modInfo = this.indexGoMod()
+    if (!modInfo) {
+      return
+    }
+    this.goModule = modInfo.module
+    this.goVersion = modInfo.goVersion
+
+    const deps = modInfo?.requirements ?? []
+    const locals = await this.indexAllGoFiles()
+    if (!locals) {
+      return
+    }
+    locals.localImports.forEach((local) => {
       local.aliases.sort((a, b) => b.files.length - a.files.length)
     })
-    locals.sort((a, b) => b.aliases.reduce((acc, cur) => acc + cur.files.length, 0) - a.aliases.reduce((acc, cur) => acc + cur.files.length, 0))
+    locals.localImports.sort((a, b) => b.aliases.reduce((acc, cur) => acc + cur.files.length, 0) - a.aliases.reduce((acc, cur) => acc + cur.files.length, 0))
     const stdDeps = goStdLibs.map((dep: string) => ({ name: dep, version: '' }))
     deps.push(...stdDeps)
     this.importableDeps = deps
-    this.localImports = new Map(locals.map((dep) => [dep.name, dep]))
+    this.subPackages = locals.localSubPackages
+    this.localImports = new Map(locals.localImports.map((dep) => [dep.name, dep]))
     vscode.window.showInformationMessage('go.mod and local imports indexed')
   }
 
@@ -95,13 +135,22 @@ export class GolangProcessor {
         optionSet.add(key)
       }
     })
+    this.subPackages.forEach((sub) => {
+      if (!optionSet.has(sub)) {
+        candidates.push({
+          label: sub,
+          description: '(Local)',
+        })
+        optionSet.add(sub)
+      }
+    })
     this.importableDeps.forEach((dep) => {
       candidates.push({
         label: dep.name,
         description: dep.version,
       })
     })
-    
+
     const selectedMod = await vscode.window.showQuickPick(candidates, {
       placeHolder: 'Pick the base module, please.',
       title: 'Select the module to import'

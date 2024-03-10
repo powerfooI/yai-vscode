@@ -17,8 +17,29 @@
   "activationEvents": [
     "onLanguage:go"
   ],
+  "icon": "images/yai-logo.png",
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": [
+      {
+        "id": "yai",
+        "title": "Yet Another Importer",
+        "order": 1,
+        "properties": {
+          "yai.indexExclude": {
+            "type": "array",
+            "description": "Glob patterns to exclude from indexing",
+            "default": [
+              "**/node_modules/**",
+              "**/vendor/**"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    ],
     "commands": [
       {
         "command": "yai.import",
@@ -38,7 +59,7 @@
     "preintgtest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "intgtest": "node ./out/test/runTest.js",
-    "test": "npx mocha -r ts-node/register ./src/test/spec/*.test.ts"
+    "test": "npx nyc mocha -r ts-node/register ./src/test/spec/*.test.ts"
   },
   "devDependencies": {
     "@types/glob": "^7.1.3",
@@ -50,6 +71,7 @@
     "eslint": "^7.19.0",
     "glob": "^7.1.6",
     "mocha": "^8.2.1",
+    "nyc": "^15.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^4.1.3",
     "vscode-test": "^1.5.0"

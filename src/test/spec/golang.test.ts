@@ -1,9 +1,15 @@
 import * as assert from 'assert';
 
-import { parseGoFile, parseGoMod, findImportPos, ImportPosType } from '../../languages/golang/parse'
+import {
+	parseGoFileImports,
+	parseGoModRequirements,
+	findImportPos,
+	ImportPosType,
+	parseGoModInfo,
+} from '../../languages/golang/parse'
 
-const goModContentSimple = 
-`module backend
+const goModContentSimple =
+	`module backend
 
 go 1.15
 
@@ -14,8 +20,8 @@ require (
 )
 `
 
-const goModContentComplex = 
-`module github.com/some-repo/k8s-operator
+const goModContentComplex =
+	`module github.com/some-repo/k8s-operator
 
 go 1.20
 
@@ -96,8 +102,8 @@ require (
 
 `
 
-const goFileContentNoImport = 
-`
+const goFileContentNoImport =
+	`
 // Some comments here
 // Some more comments here
 package main
@@ -108,7 +114,7 @@ func main() {
 `
 
 const goFileContentSingleImport =
-`
+	`
 // Some comments here
 // Some more comments here
 package main
@@ -116,8 +122,8 @@ package main
 import "fmt"
 `
 
-const goFileContentMultiImport = 
-`package main
+const goFileContentMultiImport =
+	`package main
 
 import (
 	"fmt"
@@ -179,19 +185,19 @@ var (
 )`
 
 describe('Golang Test Suite', () => {
-  it('Test parsing a simple go.mod', () => {
-    const parsed = parseGoMod(goModContentSimple)
-    assert.strictEqual(parsed.length, 3)
-    assert.strictEqual(parsed[0].name, 'github.com/gin-contrib/cors')
-    assert.strictEqual(parsed[0].version, 'v1.3.1')
-    assert.strictEqual(parsed[1].name, 'github.com/gin-gonic/gin')
-    assert.strictEqual(parsed[1].version, 'v1.6.3')
-    assert.strictEqual(parsed[2].name, 'github.com/sirupsen/logrus')
-    assert.strictEqual(parsed[2].version, 'v1.7.0')
-  })
+	it('Test parsing a simple go.mod', () => {
+		const parsed = parseGoModRequirements(goModContentSimple)
+		assert.strictEqual(parsed.length, 3)
+		assert.strictEqual(parsed[0].name, 'github.com/gin-contrib/cors')
+		assert.strictEqual(parsed[0].version, 'v1.3.1')
+		assert.strictEqual(parsed[1].name, 'github.com/gin-gonic/gin')
+		assert.strictEqual(parsed[1].version, 'v1.6.3')
+		assert.strictEqual(parsed[2].name, 'github.com/sirupsen/logrus')
+		assert.strictEqual(parsed[2].version, 'v1.7.0')
+	})
 
-  it('Test parsing a complex go file', () => {
-		const parsed = parseGoMod(goModContentComplex)
+	it('Test parsing a complex go file', () => {
+		const parsed = parseGoModRequirements(goModContentComplex)
 		assert.strictEqual(parsed.length, 69)
 		// Start of the list
 		assert.strictEqual(parsed[0].name, 'github.com/go-logr/logr')
@@ -202,22 +208,22 @@ describe('Golang Test Suite', () => {
 		// End of the list
 		assert.strictEqual(parsed[68].name, 'sigs.k8s.io/yaml')
 		assert.strictEqual(parsed[68].version, 'v1.3.0')
-  })
+	})
 
 	it('Test parsing a go file without import statement', () => {
-		const parsed = parseGoFile(goFileContentNoImport)
+		const parsed = parseGoFileImports(goFileContentNoImport)
 		assert.strictEqual(parsed.length, 0)
 	})
 
 	it('Test parsing a go file with single import statement', () => {
-		const parsed = parseGoFile(goFileContentSingleImport)
+		const parsed = parseGoFileImports(goFileContentSingleImport)
 		assert.strictEqual(parsed.length, 1)
 		assert.strictEqual(parsed[0].name, 'fmt')
 		assert.strictEqual(parsed[0].alias, '')
 	})
 
 	it('Test parsing a go file with multi import statement', () => {
-		const parsed = parseGoFile(goFileContentMultiImport)
+		const parsed = parseGoFileImports(goFileContentMultiImport)
 		assert.strictEqual(parsed.length, 3)
 		assert.strictEqual(parsed[0].name, 'fmt')
 		assert.strictEqual(parsed[0].alias, '')
@@ -228,7 +234,7 @@ describe('Golang Test Suite', () => {
 	})
 
 	it('Test parsing a more complex go file', () => {
-		const parsed = parseGoFile(goFileContentMoreComplex)
+		const parsed = parseGoFileImports(goFileContentMoreComplex)
 		assert.strictEqual(parsed.length, 15)
 		assert.strictEqual(parsed[0].name, 'context')
 		assert.strictEqual(parsed[0].alias, '')
@@ -241,7 +247,7 @@ describe('Golang Test Suite', () => {
 
 		assert.strictEqual(parsed[11].name, 'github.com/oceanbase/ob-operator/api/v1alpha1')
 		assert.strictEqual(parsed[11].alias, 'v1alpha1')
-		
+
 	})
 
 	it('Test finding import position in go file with no import statement', () => {
@@ -277,5 +283,16 @@ describe('Golang Test Suite', () => {
 	it('Test more complex importing position with already imported module', () => {
 		const pos = findImportPos(goFileContentMoreComplex, "sigs.k8s.io/controller-runtime/pkg/log/zap")
 		assert.strictEqual(pos.type, ImportPosType.AlreadyImported)
+	})
+
+	it('Test parse go mod info with complex go.mod', () => {
+		const parsed = parseGoModInfo(goModContentComplex)
+		assert.strictEqual(parsed.module, 'github.com/some-repo/k8s-operator')
+		assert.strictEqual(parsed.goVersion, '1.20')
+		assert.strictEqual(parsed.requirements.length, 69)
+		assert.strictEqual(parsed.requirements[0].name, 'github.com/go-logr/logr')
+		assert.strictEqual(parsed.requirements[0].version, 'v1.2.4')
+		assert.strictEqual(parsed.requirements[68].name, 'sigs.k8s.io/yaml')
+		assert.strictEqual(parsed.requirements[68].version, 'v1.3.0')
 	})
 })

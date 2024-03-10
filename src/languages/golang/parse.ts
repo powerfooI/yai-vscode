@@ -1,9 +1,9 @@
-import { ModuleDependency } from './types';
+import { ModuleDependency, GoModInfo } from './types';
 
 /** 
  * Given the content of go.mod, parse all its dependencies, including direct and indirect.
  */
-export function parseGoMod(content: string): ModuleDependency[] {
+export function parseGoModRequirements(content: string): ModuleDependency[] {
   const pattern = /require\s+\(([\s\S]+?)\)/g
   const matches = content.match(pattern)
   if (!matches) {
@@ -21,6 +21,23 @@ export function parseGoMod(content: string): ModuleDependency[] {
   return deps
 }
 
+/**
+ * parseGoModInfo parses the content of go.mod and returns GoModInfo.
+ * @param content content file of go.mod
+ * @returns GoModInfo including module name, go version and all dependencies.
+ */
+export function parseGoModInfo(content: string): GoModInfo {
+  const modulePattern = /module (\S+)/g
+  const goVersionPattern = /go (\S+)/g
+  const moduleMatch = content.match(modulePattern)
+  const goVersionMatch = content.match(goVersionPattern)
+  const module = moduleMatch ? moduleMatch[0].replace('module ', '') : ''
+  const goVersion = goVersionMatch ? goVersionMatch[0].replace('go ', '') : ''
+
+  const requirements = parseGoModRequirements(content)
+  return { module, goVersion, requirements }
+}
+
 export type GoFileImport = {
   name: string
   alias: string
@@ -29,7 +46,7 @@ export type GoFileImport = {
 /**
  * Parse the content of a go file, and return all its imports.
  */
-export function parseGoFile(raw: string): GoFileImport[] {
+export function parseGoFileImports(raw: string): GoFileImport[] {
   const content = raw.replace(/\/\/.+/g, '').replace(/\/\*[\s\S]+?\*\//g, '')
   const singleImportPattern = /import (.*"\S+")/g
   const multiImportPattern = /import \([\s\S]+?\)/g

@@ -6,7 +6,7 @@ import * as vscode from 'vscode'
 export type GoModInfo = {
   module: string
   goVersion: string
-  require: ModuleDependency[]
+  requirements: ModuleDependency[]
 }
 
 /**
@@ -15,12 +15,20 @@ export type GoModInfo = {
 export type ModuleDependency = {
   name: string
   version: string
+  indirect?: boolean
 }
 
 type ImportAlias = {
   alias: string,
   files: vscode.Uri[]
 }
+
+export type IndexLocalGoFiles = {
+  localImports: LocalModuleImport[]
+  localSubPackages: LocalSubPackage[]
+}
+
+export type LocalSubPackage = string
 
 export enum LocalModuleImportType {
   Local = 'local',
