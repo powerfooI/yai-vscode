@@ -10,8 +10,20 @@ This extension allows you to add imports to your file without having to scroll t
 
 1. Install the extension and activate it.
 2. Open a workspace in supported languages.
-3. Type CMD+Shift+P to open the command palette, and execute the command "YAI: Import module".
+3. Type `[CMD/Ctrl]+Shift+P` to open the command palette, and execute the command "YAI: Import module".
 4. Type the name of the module you want to import and press enter, the following steps depend on the language you are using. In Golang, for example, the extension will ask you sub package and alias to use.
+
+### Commands
+
+- `YAI: Import module`: Import a module to the current file.
+- `YAI: Repeat Previous Import`: Import the same module with the same alias as before.
+- `YAI: Index modules`: Index all local modules in the workspace and generate prompts used in importing.
+
+### Configurations
+
+- `yai.excludePaths`: Exclude paths from indexing. Default is `["node_modules", "vendor"]`, which excludes common paths that do not contain source code.
+- `yai.verbose`: Enable/disable verbose mode of the extension. Default is `false`, which deduct the extension from showing info messages.
+- `yai.customInput`: Enable/disable custom input of the extension. Default is `false`, which shorten the input process by skipping the custom input step. (For example in golang, it does not ask for sub package and any other custom input.) The extension will always use the indexed information.
 
 ## Supported languages
 
