@@ -36,6 +36,16 @@
             "items": {
               "type": "string"
             }
+          },
+          "yai.verbose": {
+            "type": "boolean",
+            "description": "Enable verbose logging",
+            "default": false
+          },
+          "yai.enableCustomInput": {
+            "type": "boolean",
+            "description": "Enable custom input when importing modules",
+            "default": false
           }
         }
       }
@@ -48,6 +58,10 @@
       {
         "command": "yai.index",
         "title": "YAI: Index Modules"
+      },
+      {
+        "command": "yai.repeatPreviousImport",
+        "title": "YAI: Repeat Previous Import"
       }
     ],
     "views": {}

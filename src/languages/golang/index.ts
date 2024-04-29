@@ -15,19 +15,31 @@ const customInputItem: vscode.QuickPickItem = {
   description: 'Input the module to import',
 }
 
+const wsConfig = vscode.workspace.getConfiguration()
+
+type ImportingModule = {
+  module: string,
+  alias: string,
+}
+
 export class GolangProcessor {
   private localImports: Map<string, LocalModuleImport> = new Map()
   private importableDeps: ModuleDependency[] = []
   private subPackages: LocalSubPackage[] = []
   private goVersion: string = ''
   private goModule: string = ''
+  private verbose: boolean = false
+  private enableCustomInput: boolean = false
+  private previousImport: ImportingModule | undefined
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.localImports = this.context.workspaceState.get(GO_MODULE_KEY, new Map<string, LocalModuleImport>())
     this.getExtensionConfig()
   }
+
   private getExtensionConfig() {
-    console.log("get extension config", vscode.workspace.getConfiguration().get<string[]>("yai.indexExclude"))
+    this.verbose = wsConfig.get<boolean>("yai.verbose") ?? false
+    this.enableCustomInput = wsConfig.get<boolean>("yai.enableCustomInput") ?? false
   }
 
   private async indexAllGoFiles(): Promise<IndexLocalGoFiles | undefined> {
@@ -36,7 +48,7 @@ export class GolangProcessor {
     const packageSet: Set<string> = new Set()
     const ws = vscode.workspace.workspaceFolders![0]
     let excluding = ""
-    const excludePatterns = vscode.workspace.getConfiguration().get<string[]>("yai.indexExclude") || []
+    const excludePatterns = wsConfig.get<string[]>("yai.indexExclude") || []
     if (excludePatterns.length > 0) {
       excluding = `{${excludePatterns.join(',')}}`
     }
@@ -97,33 +109,11 @@ export class GolangProcessor {
     return modInfo
   }
 
-  public async index() {
-    const modInfo = this.indexGoMod()
-    if (!modInfo) {
-      return
+  private async getImportingModule(): Promise<ImportingModule| undefined> {
+    const candidates: vscode.QuickPickItem[] = []
+    if (this.enableCustomInput) {
+      candidates.push(customInputItem)
     }
-    this.goModule = modInfo.module
-    this.goVersion = modInfo.goVersion
-
-    const deps = modInfo?.requirements ?? []
-    const locals = await this.indexAllGoFiles()
-    if (!locals) {
-      return
-    }
-    locals.localImports.forEach((local) => {
-      local.aliases.sort((a, b) => b.files.length - a.files.length)
-    })
-    locals.localImports.sort((a, b) => b.aliases.reduce((acc, cur) => acc + cur.files.length, 0) - a.aliases.reduce((acc, cur) => acc + cur.files.length, 0))
-    const stdDeps = goStdLibs.map((dep: string) => ({ name: dep, version: '' }))
-    deps.push(...stdDeps)
-    this.importableDeps = deps
-    this.subPackages = locals.localSubPackages
-    this.localImports = new Map(locals.localImports.map((dep) => [dep.name, dep]))
-    vscode.window.showInformationMessage('go.mod and local imports indexed')
-  }
-
-  public async import() {
-    const candidates: vscode.QuickPickItem[] = [customInputItem]
     const optionSet = new Set(candidates.map((c) => c.label))
     const localImportKeys = Array.from(this.localImports.keys())
     localImportKeys.forEach((key) => {
@@ -172,7 +162,9 @@ export class GolangProcessor {
 
     if (subPackages.length > 0) {
       const subPackageOptions = subPackages
-      subPackageOptions.unshift(customInputItem)
+      if (this.enableCustomInput) {
+        subPackageOptions.unshift(customInputItem)
+      }
       const selectedSub = await vscode.window.showQuickPick(subPackages, {
         placeHolder: 'Pick the sub package to import',
         title: 'Select the sub package to import'
@@ -187,7 +179,7 @@ export class GolangProcessor {
       } else {
         importingModule = selectedSub.label
       }
-    } else {
+    } else if (this.enableCustomInput) {
       const inputtedSub = await vscode.window.showInputBox({ title: 'Input the sub package to import' })
       if (inputtedSub && inputtedSub.startsWith(importingModule + "/")) {
         importingModule = inputtedSub
@@ -200,30 +192,36 @@ export class GolangProcessor {
     const currentFile = vscode.window.activeTextEditor!.document.uri
     const localImport = this.localImports.get(importingModule)
     if (localImport && localImport.aliases.length > 0) {
-      const aliases: vscode.QuickPickItem[] = localImport.aliases.
-        map((a) => {
-          return {
-            label: a.alias,
-            description: `${a.alias ? 'alias' : 'no alias'} count: ${a.files.length}`,
-          }
-        })
-      aliases.unshift(customInputItem)
-      const selectedAlias = await vscode.window.showQuickPick(aliases, {
-        placeHolder: 'Pick the alias to import, empty for original name',
-        title: 'Select the alias to import'
-      })
-      if (!selectedAlias) {
-        // Do nothing, keep alias empty
-      } else if (selectedAlias.label === customInputLabel) {
-        const inputtedAlias = await vscode.window.showInputBox({ title: 'Input the alias to import' })
-        if (inputtedAlias) {
-          alias = inputtedAlias
-          localImport.addAlias(inputtedAlias, currentFile)
-        }
+      if (localImport.aliases.length === 1) {
+        alias = localImport.aliases[0].alias
       } else {
-        alias = selectedAlias.label
+        const aliases: vscode.QuickPickItem[] = localImport.aliases.
+          map((a) => {
+            return {
+              label: a.alias,
+              description: `${a.alias ? 'alias' : 'no alias'} count: ${a.files.length}`,
+            }
+          })
+        if (this.enableCustomInput) {
+          aliases.unshift(customInputItem)
+        }
+        const selectedAlias = await vscode.window.showQuickPick(aliases, {
+          placeHolder: 'Pick the alias to import, empty for original name',
+          title: 'Select the alias to import'
+        })
+        if (!selectedAlias) {
+          // Do nothing, keep alias empty
+        } else if (selectedAlias.label === customInputLabel) {
+          const inputtedAlias = await vscode.window.showInputBox({ title: 'Input the alias to import' })
+          if (inputtedAlias) {
+            alias = inputtedAlias
+            localImport.addAlias(inputtedAlias, currentFile)
+          }
+        } else {
+          alias = selectedAlias.label
+        }
       }
-    } else {
+    } else if (this.enableCustomInput) {
       const inputtedAlias = await vscode.window.showInputBox({ title: 'Input the alias to import' })
       if (inputtedAlias) {
         alias = inputtedAlias
@@ -236,6 +234,12 @@ export class GolangProcessor {
         }
       }
     }
+    return { module: importingModule, alias: alias }
+  }
+
+  private async doImportEdit(i: ImportingModule) {
+    const { module: importingModule, alias } = i
+    const currentFile = vscode.window.activeTextEditor!.document.uri
     const edit = new vscode.WorkspaceEdit()
     const docText = vscode.window.activeTextEditor!.document.getText().replace(/\/\/.+/g, '//')
     try {
@@ -250,7 +254,7 @@ export class GolangProcessor {
           vscode.window.showInformationMessage('The module has been imported')
           return
         case ImportPosType.NoImport:
-          edit.insert(currentFile, new vscode.Position(importPos.start! + 1, 0), `import ${aliasedModule}\n`)
+          edit.insert(currentFile, new vscode.Position(importPos.start! + 1, 0), `import ${aliasedModule}\n\n`)
           break
         case ImportPosType.SingleImport:
           const keptOrigin = importPos.extra!.replace('import ', '')
@@ -266,9 +270,59 @@ export class GolangProcessor {
     }
     const ok = await vscode.workspace.applyEdit(edit)
     if (ok) {
-      vscode.window.showInformationMessage('Import successfully!')
+      if (this.verbose) {
+        vscode.window.showInformationMessage('Import successfully!')
+      }
+      this.previousImport = {
+        module: importingModule,
+        alias: alias,
+      }
     } else {
       vscode.window.showErrorMessage('Fail to import the module')
     }
+  }
+
+  public async index() {
+    const modInfo = this.indexGoMod()
+    if (!modInfo) {
+      return
+    }
+    this.goModule = modInfo.module
+    this.goVersion = modInfo.goVersion
+
+    const deps = modInfo?.requirements ?? []
+    const locals = await this.indexAllGoFiles()
+    if (!locals) {
+      return
+    }
+    locals.localImports.forEach((local) => {
+      local.aliases.sort((a, b) => b.files.length - a.files.length)
+    })
+    locals.localImports.sort((a, b) => b.aliases.reduce((acc, cur) => acc + cur.files.length, 0) - a.aliases.reduce((acc, cur) => acc + cur.files.length, 0))
+    const stdDeps = goStdLibs.map((dep: string) => ({ name: dep, version: '' }))
+    deps.push(...stdDeps)
+    this.importableDeps = deps
+    this.subPackages = locals.localSubPackages
+    this.localImports = new Map(locals.localImports.map((dep) => [dep.name, dep]))
+    if (this.verbose) {
+      vscode.window.showInformationMessage('go.mod and local imports indexed')
+    }
+  }
+
+  public async import() {
+    const wanted = await this.getImportingModule()
+    if (!wanted) {
+      return
+    }
+    await this.doImportEdit(wanted)
+  }
+
+  public async importPrevious() {
+    const wanted = this.previousImport
+    if (!wanted) {
+      vscode.window.showErrorMessage('No previous import found')
+      return
+    }
+    await this.doImportEdit(wanted)
   }
 }

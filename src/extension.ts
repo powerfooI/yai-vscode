@@ -14,8 +14,15 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage('No active editor!')
 		}
 	})
+	const importPreviousRegister = vscode.commands.registerCommand('yai.repeatPreviousImport', async () => {
+		if (vscode.window.activeTextEditor && processor.getLanguageIDs().includes(vscode.window.activeTextEditor.document.languageId)) {
+			processor.importPrevious()
+		} else {
+			vscode.window.showInformationMessage('No active editor!')
+		}
+	})
 	processor = new YAIProcessor(context)
-	context.subscriptions.push(importRegister, indexRegister)
+	context.subscriptions.push(importRegister, indexRegister, importPreviousRegister)
 	vscode.commands.executeCommand("yai.index")
 }
 

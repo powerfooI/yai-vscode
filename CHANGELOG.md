@@ -19,3 +19,15 @@
 
 * Set a extension icon :)
 * Added nyc dependency for code coverage
+
+## 0.0.3
+
+### Golang
+
+* Added support for repeating previous import. Now you can import the same module with the same alias as before through command `YAI: Repeat Previous Import`.
+* Shortened the input process by skipping the custom input step and alias selection (when there is only one alias).
+
+### Others 
+
+* Added configuration item to enable/disable `verbose` mode of the extension. Default is `false`, which deduct the extension from showing info messages.
+* Added configuration item to enable/disable `custom input` of the extension. Default is `false`, which shorten the input process by skipping the custom input step. (For example in golang, it does not ask for sub package and any other custom input.) The extension will always use the indexed information.

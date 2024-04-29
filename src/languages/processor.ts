@@ -11,6 +11,7 @@ export enum SupportedLanguages {
 interface InnerProcessor {
   index(): void
   import(): void
+  importPrevious(): void
 }
 
 export interface LanguageProcessor extends InnerProcessor {
@@ -53,6 +54,10 @@ export class YAIProcessor implements LanguageProcessor {
 
   public import() {
     this.inner?.import()
+  }
+
+  public importPrevious(): void {
+    this.inner?.importPrevious()
   }
 
   public getLanguageIDs(): string[] {
