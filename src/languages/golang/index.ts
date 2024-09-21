@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { Yai } from '../types';
 import { pathExists } from '../utils';
 import { ImportPosType, findImportPos, parseGoFileImports, parseGoModInfo } from './parse';
 import { goStdLibs } from './std';
@@ -15,31 +16,24 @@ const customInputItem: vscode.QuickPickItem = {
   description: 'Input the module to import',
 }
 
-const wsConfig = vscode.workspace.getConfiguration()
 
 type ImportingModule = {
   module: string,
   alias: string,
 }
 
-export class GolangProcessor {
+export class GolangProcessor extends Yai {
   private localImports: Map<string, LocalModuleImport> = new Map()
   private importableDeps: ModuleDependency[] = []
   private subPackages: LocalSubPackage[] = []
   private goVersion: string = ''
   private goModule: string = ''
-  private verbose: boolean = false
-  private enableCustomInput: boolean = false
+
   private previousImport: ImportingModule | undefined
 
   constructor(private readonly context: vscode.ExtensionContext) {
+    super()
     this.localImports = this.context.workspaceState.get(GO_MODULE_KEY, new Map<string, LocalModuleImport>())
-    this.getExtensionConfig()
-  }
-
-  private getExtensionConfig() {
-    this.verbose = wsConfig.get<boolean>("yai.verbose") ?? false
-    this.enableCustomInput = wsConfig.get<boolean>("yai.enableCustomInput") ?? false
   }
 
   private async indexAllGoFiles(): Promise<IndexLocalGoFiles | undefined> {
@@ -48,7 +42,7 @@ export class GolangProcessor {
     const packageSet: Set<string> = new Set()
     const ws = vscode.workspace.workspaceFolders![0]
     let excluding = ""
-    const excludePatterns = wsConfig.get<string[]>("yai.indexExclude") || []
+    const excludePatterns = this.indexExclude
     if (excludePatterns.length > 0) {
       excluding = `{${excludePatterns.join(',')}}`
     }
@@ -94,7 +88,7 @@ export class GolangProcessor {
         progress.report({ increment: (i + 1) / goFiles.length * 100, message: 'Indexing go module' })
       }
     })
-    return { localImports: deps, localSubPackages: Array.from(packageSet.keys())}
+    return { localImports: deps, localSubPackages: Array.from(packageSet.keys()) }
   }
 
   private indexGoMod(): GoModInfo | undefined {
@@ -109,7 +103,7 @@ export class GolangProcessor {
     return modInfo
   }
 
-  private async getImportingModule(): Promise<ImportingModule| undefined> {
+  private async getImportingModule(): Promise<ImportingModule | undefined> {
     const candidates: vscode.QuickPickItem[] = []
     if (this.enableCustomInput) {
       candidates.push(customInputItem)

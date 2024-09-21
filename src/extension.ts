@@ -1,29 +1,9 @@
 import * as vscode from 'vscode'
-import { LanguageProcessor, YAIProcessor } from './languages/processor'
-
-let processor: LanguageProcessor
+import { RootHandler } from './languages/processor'
 
 export function activate(context: vscode.ExtensionContext) {
-	const indexRegister = vscode.commands.registerCommand('yai.index', async () => {
-		processor.index()
-	})
-	const importRegister = vscode.commands.registerCommand('yai.import', async () => {
-		if (vscode.window.activeTextEditor && processor.getLanguageIDs().includes(vscode.window.activeTextEditor.document.languageId)) {
-			processor.import()
-		} else {
-			vscode.window.showInformationMessage('No active editor!')
-		}
-	})
-	const importPreviousRegister = vscode.commands.registerCommand('yai.repeatPreviousImport', async () => {
-		if (vscode.window.activeTextEditor && processor.getLanguageIDs().includes(vscode.window.activeTextEditor.document.languageId)) {
-			processor.importPrevious()
-		} else {
-			vscode.window.showInformationMessage('No active editor!')
-		}
-	})
-	processor = new YAIProcessor(context)
-	context.subscriptions.push(importRegister, indexRegister, importPreviousRegister)
-	vscode.commands.executeCommand("yai.index")
+	const processor = new RootHandler(context)
+	context.subscriptions.push(...processor.disposables())
 }
 
 // this method is called when your extension is deactivated
