@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { Yai } from "../types";
-import * as fs from 'fs';
 import { TextDecoder } from 'util';
 import { exec } from 'child_process';
 
@@ -21,7 +20,8 @@ type Dependency = {
   version: string
 }
 
-// TODO: build local package structure
+const KEY_PYTHON_IMPORTS = "PYTHON_IMPORTS"
+const KEY_PYTHON_DEPS = "PYTHON_DEPS"
 
 export class PythonProcessor extends Yai {
   private dependencies: Dependency[] = []
@@ -29,13 +29,18 @@ export class PythonProcessor extends Yai {
   private indexed: boolean = false
   private localImports: Map<string, PythonImport[]> = new Map()
   private indexPromise: Promise<void> | undefined
+  private rootUri: vscode.Uri
 
   constructor(
     private readonly context: vscode.ExtensionContext,
   ) {
     super()
-    this.localImports = this.context.workspaceState.get("PYTHON_IMPORTS", new Map<string, PythonImport[]>())
-    this.indexPromise = this.index()
+    this.rootUri = vscode.workspace.workspaceFolders![0].uri
+    this.localImports = this.context.workspaceState.get(KEY_PYTHON_IMPORTS, new Map())
+    this.dependencies = this.context.workspaceState.get(KEY_PYTHON_DEPS, [])
+    if (this.dependencies.length === 0) {
+      this.indexPromise = this.index()
+    }
   }
 
   // TODO: Why is the initial call of index() delayed?
@@ -46,7 +51,12 @@ export class PythonProcessor extends Yai {
     } else {
       console.log("Indexing python dependencies...")
       this.dependencies = await this.loadDependencies()
-      this.indexed = true
+      this.dependencies.push(...(await this.loadLocalPackages()))
+
+      this.context.workspaceState.update(KEY_PYTHON_DEPS, this.dependencies)
+        .then(() => {
+          this.indexed = true
+        })
     }
     this.indexPromise = undefined
   }
@@ -60,6 +70,7 @@ export class PythonProcessor extends Yai {
       await this.indexPromise
     }
     const candidates: vscode.QuickPickItem[] = []
+
     this.dependencies.forEach((dependency) => {
       candidates.push({
         label: dependency.name,
@@ -75,6 +86,33 @@ export class PythonProcessor extends Yai {
       return
     }
     if (selected?.label === "From") {
+      // get active file uri
+      const dirName = vscode.window.activeTextEditor?.document.uri.fsPath.split("/").slice(0, -1).join("/")!
+      console.log("activeEditorPath", dirName, this.rootUri.path)
+
+      if (dirName !== this.rootUri.path) {
+        const packageName = dirName.split(this.rootUri.path).pop()!
+          .replace(/\//g, '.') // replace all / with .
+          .replace(/\.py$/, '') // remove .py
+          .slice(1) // remove leading .
+        const filtered = this.dependencies.filter(dep => dep.name.startsWith(packageName))
+        // console.log("packageName", packageName)
+        // console.log("filtered", filtered)
+
+        filtered.forEach((dependency) => {
+          if (dependency.name !== packageName) {
+            candidates.push({
+              label: dependency.name.split(packageName).pop()!,
+              description: dependency.version,
+            })
+          }
+        })
+        if (candidates.length > 0) {
+          candidates.push({
+            label: ".",
+          })
+        }
+      }
       const from = await vscode.window.showQuickPick(candidates, {
         placeHolder: 'Select a dependency to import from',
       })
@@ -177,6 +215,42 @@ export class PythonProcessor extends Yai {
     }
     console.log("pythonImports", pythonImports)
     return pythonImports;
+  }
+
+  /**
+   * loadLocalPackages loads the local packages in the current workspace
+   * Every directory with a __init__.py is considered a package
+   * Creates list of packageA.packageB.packageC ...
+   * @returns the local packages
+   */
+  private async loadLocalPackages(rootUri?: vscode.Uri): Promise<Dependency[]> {
+    const deps: Dependency[] = []
+    const root = rootUri || this.rootUri
+    const packageFiles = await vscode.workspace.fs.readDirectory(root)
+
+    for (const [fileName, fileType] of packageFiles) {
+      if (fileType === vscode.FileType.Directory && !fileName.startsWith(".")) {
+        const dirName = fileName
+        deps.push(...(await this.loadLocalPackages(vscode.Uri.joinPath(root, dirName))))
+      } else if (fileType === vscode.FileType.File) {
+        if (fileName === '__init__.py') {
+          // Construct the package name from the workspace root to the package
+          const packageName = root.path.split(this.rootUri.path + "/").pop()!
+            .replace(/\//g, '.')
+          deps.push({ name: packageName, version: '(Local)' })
+        } else if (fileName.endsWith('.py')) {
+          // console.log("local file", (root.path + fileName))
+          const filePkgName = vscode.Uri.joinPath(root, fileName).fsPath.split(this.rootUri.path + "/").pop()!
+            .replace(/\//g, '.')
+            .replace(/\.py$/, '')
+          deps.push({ name: filePkgName, version: '(Local)' })
+        }
+      }
+    }
+    // if (!rootUri) {
+    //   console.log("local packages", deps)
+    // }
+    return deps
   }
 
   /**
