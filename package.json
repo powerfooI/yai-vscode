@@ -4,7 +4,7 @@
   "description": "Yet Another Importer",
   "repository": {
     "type": "git",
-    "url": "https://github.com/powerfooi/yai-vscode"
+    "url": "git+https://github.com/powerfooi/yai-vscode.git"
   },
   "publisher": "powerfooi",
   "version": "0.0.5",
