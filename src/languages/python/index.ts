@@ -43,8 +43,9 @@ export class PythonProcessor extends Yai {
     }
   }
 
-  // TODO: Why is the initial call of index() delayed?
+  // PROBLEM: Why is the initial call of index() delayed?
   // It will be executed twice when the command is called manually for the first time.
+  // FIX: Added an entry in activationEvents of package.json
   public async index() {
     if (this.indexPromise) {
       await this.indexPromise

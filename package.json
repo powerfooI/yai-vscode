@@ -15,7 +15,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onLanguage:go"
+    "onLanguage:go",
+    "onLanguage:python"
   ],
   "icon": "images/yai-logo.png",
   "main": "./out/extension.js",
@@ -31,7 +32,9 @@
             "description": "Glob patterns to exclude from indexing",
             "default": [
               "**/node_modules/**",
-              "**/vendor/**"
+              "**/vendor/**",
+              "**/tests/**",
+              "**/__pycache__/**"
             ],
             "items": {
               "type": "string"

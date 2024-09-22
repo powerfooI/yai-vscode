@@ -21,13 +21,14 @@ This extension allows you to add imports to your file without having to scroll t
 
 ### Configurations
 
-- `yai.excludePaths`: Exclude paths from indexing. Default is `["node_modules", "vendor"]`, which excludes common paths that do not contain source code.
+- `yai.indexExclude`: Exclude paths from indexing. Default is `["node_modules", "vendor", "tests", "__pycache__"]`, which excludes common paths that do not contain source code.
 - `yai.verbose`: Enable/disable verbose mode of the extension. Default is `false`, which deduct the extension from showing info messages.
 - `yai.customInput`: Enable/disable custom input of the extension. Default is `false`, which shorten the input process by skipping the custom input step. (For example in golang, it does not ask for sub package and any other custom input.) The extension will always use the indexed information.
 
-## Supported languages
+## Roadmap
 
 - [x] Golang
-- [ ] ECMAScript (WIP)
-- [ ] Python (In planning)
-- [ ] C/C++ (In planning)
+- [x] Python (For projects that take poetry as the package manager)
+- [ ] Golang alias search
+- [ ] ECMAScript
+- [ ] C/C++
