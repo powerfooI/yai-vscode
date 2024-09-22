@@ -1,5 +1,8 @@
 # YAI - Yet Another Importer
 
+![NPM Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2Fpowerfooi%2Fyai-vscode%2Fraw%2Fmain%2Fpackage.json&query=%24.version)
+
+
 Have you ever got tired of writing the same import statements over and over again? Scroll to the header of the file, add the import, scroll back to the place you were working on, and then repeat the process for every import you need? Well, I have. The official language extensions do not always import the module as expected correctly. And that's why I created this extension.
 
 ## Features
