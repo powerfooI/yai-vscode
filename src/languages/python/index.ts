@@ -27,20 +27,37 @@ export class PythonProcessor extends Yai {
   private dependencies: Dependency[] = []
   private previousImport: string | undefined
   private indexed: boolean = false
+  private localImports: Map<string, PythonImport[]> = new Map()
+  private indexPromise: Promise<void> | undefined
 
   constructor(
     private readonly context: vscode.ExtensionContext,
   ) {
     super()
+    this.localImports = this.context.workspaceState.get("PYTHON_IMPORTS", new Map<string, PythonImport[]>())
+    this.indexPromise = this.index()
   }
 
+  // TODO: Why is the initial call of index() delayed?
+  // It will be executed twice when the command is called manually for the first time.
   public async index() {
-    this.dependencies = await this.loadDependencies()
-    this.indexed = true
+    if (this.indexPromise) {
+      await this.indexPromise
+    } else {
+      console.log("Indexing python dependencies...")
+      this.dependencies = await this.loadDependencies()
+      this.indexed = true
+    }
+    this.indexPromise = undefined
   }
+
   public async import() {
     if (!this.indexed) {
-      await this.index()
+      vscode.window.showInformationMessage('Indexing dependencies...')
+      if (!this.indexPromise) {
+        this.indexPromise = this.index()
+      }
+      await this.indexPromise
     }
     const candidates: vscode.QuickPickItem[] = []
     this.dependencies.forEach((dependency) => {
@@ -78,7 +95,7 @@ export class PythonProcessor extends Yai {
     }
   }
 
-  public importPrevious() {
+  public async importPrevious() {
     if (this.previousImport) {
       this.doImportEdit(this.previousImport)
     } else {
@@ -93,7 +110,7 @@ export class PythonProcessor extends Yai {
    */
   private async loadDependencies(): Promise<Dependency[]> {
     return new Promise((resolve) => {
-      exec('python3 -m pip freeze', {
+      exec('poetry run python -m pip freeze', {
         shell: '/bin/bash',
         cwd: vscode.workspace.workspaceFolders![0].uri.fsPath,
       },
@@ -106,11 +123,11 @@ export class PythonProcessor extends Yai {
             console.error(`Error: ${stderr}`);
             return;
           }
-          const dependencies = stdout.split('\n').map(line => {
+          const dependencies = stdout.split('\n').filter((line) => line.length > 0).map(line => {
             const [name, version] = line.split('==');
             return { name, version };
           });
-          console.log("dependencies", dependencies)
+          // console.log("dependencies", dependencies)
           resolve(dependencies);
         });
     });

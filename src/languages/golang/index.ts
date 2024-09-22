@@ -34,6 +34,7 @@ export class GolangProcessor extends Yai {
   constructor(private readonly context: vscode.ExtensionContext) {
     super()
     this.localImports = this.context.workspaceState.get(GO_MODULE_KEY, new Map<string, LocalModuleImport>())
+    this.index()
   }
 
   private async indexAllGoFiles(): Promise<IndexLocalGoFiles | undefined> {
@@ -277,6 +278,7 @@ export class GolangProcessor extends Yai {
   }
 
   public async index() {
+    console.log('Indexing go modules...')
     const modInfo = this.indexGoMod()
     if (!modInfo) {
       return

@@ -47,18 +47,18 @@ export class RootHandler {
 
   public disposables(): vscode.Disposable[] {
     const indexRegister = vscode.commands.registerCommand(this.commands.Index, async () => {
-      this.inner?.index()
+      await this.inner?.index()
     })
     const importRegister = vscode.commands.registerCommand(this.commands.Import, async () => {
       if (vscode.window.activeTextEditor && this.getLanguageIDs().includes(vscode.window.activeTextEditor.document.languageId)) {
-        this.inner?.import()
+        await this.inner?.import()
       } else {
         vscode.window.showInformationMessage('No active editor!')
       }
     })
     const importPreviousRegister = vscode.commands.registerCommand(this.commands.ImportPrevious, async () => {
       if (vscode.window.activeTextEditor && this.getLanguageIDs().includes(vscode.window.activeTextEditor.document.languageId)) {
-        this.inner?.importPrevious()
+        await this.inner?.importPrevious()
       } else {
         vscode.window.showInformationMessage('No active editor!')
       }

@@ -26,16 +26,16 @@ export abstract class Yai {
   /**
    * index is the function that indexes the current workspace and loads the dependencies
    */
-  public index() { }
+  public async index() { }
 
   /**
    * import imports desired dependencies into current file
    */
-  public import() { }
+  public async import() { }
 
   /**
    * importPrevious imports previously imported dependencies into current file
    */
-  public importPrevious() { }
+  public async importPrevious() { }
 }
 
